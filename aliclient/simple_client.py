@@ -1,51 +1,45 @@
+# -*- coding: utf-8 -*-
+import base64
+import os
 import sys
 
 from datetime import datetime, timedelta
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from alibabacloud_tea_openapi import models as openapi_models
 from alibabacloud_ecs20140526.client import Client as EcsClient
 from alibabacloud_ecs20140526 import models as ecs_models
 from alibabacloud_tea_util import models as util_models
-
 from alibabacloud_darabonba_env.client import Client as EnvClient
-from alibabacloud_darabonba_string.client import Client as StringClient
 
 
-# retrieve security group id by name
-# create security group with permissions(ICMP-1, TCP22, TCP5000, TCP/UDP3389) if not exist
-# create instance with joining the security group
-# add/delete permission in security group
-# retrieve instance's public ip, create time and release time
-# delete instance
-# delete security group that not related to any instance
 class SimpleClient:
     def __init__(self):
         pass
 
     # constant
-    VPN_SECURITY_GROUP = "socks"
+    ACCESS_KEY_ID = "ALIBABA_CLOUD_ACCESS_KEY_ID"
+    ACCESS_KEY_SECRET = "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
+    INSTANCE_PASSWORD = "ALIBABA_CLOUD_INSTANCE_PASSWORD"
 
-    # access configuration
+    # create configuration
     @staticmethod
-    def accessConfig(endpoint: str = "ecs.aliyuncs.com") -> openapi_models.Config:
+    def Config(endpoint: str = "ecs.aliyuncs.com") -> openapi_models.Config:
         config = openapi_models.Config(
-            access_key_id=EnvClient.get_env("ALIBABA_CLOUD_ACCESS_KEY_ID"),
-            access_key_secret=EnvClient.get_env("ALIBABA_CLOUD_ACCESS_KEY_SECRET"),
+            access_key_id=EnvClient.get_env(SimpleClient.ACCESS_KEY_ID),
+            access_key_secret=EnvClient.get_env(SimpleClient.ACCESS_KEY_SECRET),
             endpoint=endpoint,
             connect_timeout=5000,
             read_timeout=5000,
         )
         return config
 
-
-
     # describe security groups
     # option parameter: region_id, security_group_name(optional)
     # return security_group_ids
     @staticmethod
     def describeSecurityGroups(**kwargs: Dict) -> List[str]:
-        config = SimpleClient.accessConfig()
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
 
@@ -72,11 +66,11 @@ class SimpleClient:
                 print(
                     "".join(
                         [
-                            f"direction: {permission.direction}", "\n",
-                            f"policy: {permission.policy}", "\n",
-                            f"priority: {permission.priority}", "\n",
-                            f"ip_protocol: {permission.ip_protocol}", "\n",
-                            f"port_range: {permission.port_range}", "\n",
+                            f"direction: {permission.direction} ",
+                            f"policy: {permission.policy} ",
+                            f"priority: {permission.priority} ",
+                            f"ip_protocol: {permission.ip_protocol} ",
+                            f"port_range: {permission.port_range} ",
                             f"source_cidr_ip: {permission.source_cidr_ip}"
                         ]
                     )
@@ -84,22 +78,24 @@ class SimpleClient:
         return [group.security_group_id for group in security_groups]
 
     # create security group with initial permissions
-    # parameter: region_id
+    # parameter: region_id, security_group_name
     # return security_group_id
     @staticmethod
-    def createSecurityGroup(region_id: str) -> str:
-        config = SimpleClient.accessConfig()
+    def createSecurityGroup(
+        region_id: str, security_group_name: str = "socks"
+    ) -> str:
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
         # create security group
         create_security_group_request = ecs_models.CreateSecurityGroupRequest(
-            region_id=region_id, security_group_name=SimpleClient.VPN_SECURITY_GROUP
+            region_id=region_id, security_group_name=security_group_name
         )
         create_security_group_response = client.create_security_group_with_options(
             create_security_group_request, runtime
         )
         security_group_id = create_security_group_response.body.security_group_id
-        print(f'security group {security_group_id} has been created')
+        print(f"security group {security_group_id} has been created")
 
         # initialize permissions
         permissions = [
@@ -167,9 +163,10 @@ class SimpleClient:
 
     # delete security group that not related to any instance
     # parameter: region_id, security_group_id
+    # Exception: ValueError
     @staticmethod
     def deleteSecurityGroup(region_id, security_group_id):
-        config = SimpleClient.accessConfig()
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
 
@@ -184,8 +181,7 @@ class SimpleClient:
         for instance in instances:
             security_group_ids.update(instance.security_group_ids.security_group_id)
         if security_group_id in security_group_ids:
-            print(f'Security group {security_group_id} is in use, can not be deleted')
-            return
+            raise ValueError(f'Security group {security_group_id} is in use, can not be deleted')
 
         # delete when not related to any instance
         delete_security_group_request = ecs_models.DeleteSecurityGroupRequest(
@@ -196,10 +192,9 @@ class SimpleClient:
 
     # add permissions in security group
     # parameter: region_id, security_group_id, port
-    # return true when success
     @staticmethod
-    def addPermissions(region_id: str, security_group_id: str, port: int) -> bool:
-        config = SimpleClient.accessConfig()
+    def addPermissions(region_id: str, security_group_id: str, port: int):
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
         # add permissions
@@ -214,14 +209,12 @@ class SimpleClient:
         )
         client.authorize_security_group_with_options(authorize_security_group_request, runtime)
         print(f'TCP/UDP {port} has been added to security group')
-        return True
 
     # remove permissions in security group
     # parameter: region_id, security_group_id, port
-    # return true when success
     @staticmethod
-    def removePermissions(region_id: str, security_group_id: str, port: int) -> bool:
-        config = SimpleClient.accessConfig()
+    def removePermissions(region_id: str, security_group_id: str, port: int):
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
         # remove permissions
@@ -236,7 +229,6 @@ class SimpleClient:
         )
         client.revoke_security_group_with_options(revoke_security_group_request, runtime)
         print(f'TCP/UDP {port} has been removed from security group')
-        return True
 
     # get permissions by port
     # parameters: port
@@ -260,58 +252,100 @@ class SimpleClient:
             },
         ]
 
-    # 付费类型 按量计费 PostPaid
-    # 地域 美国硅谷 us-west-1
-    # 实例个数 1
-    # 规格
-    # ecs.xn4.small 1vCPU1GiB
-    # ecs.n4.small 1vCPU2GiB
-    # ecs.u1-c1m1.large 2vCPU2GiB
-    # ecs.u1-c1m2.large 2vCPU4GiB
+    # create instance
+    # parameter: region_id, security_group_id, setting(vCPU, memGiB, bandwidth)
+    # return instance_ids
+    # Exception: ValueError
+    @staticmethod
+    def createInstance(
+        region_id: str, security_group_id: str, setting: Tuple = (1, 1, 3)
+    ) -> List[str]:
+        config = SimpleClient.Config()
+        client = EcsClient(config)
+        runtime = util_models.RuntimeOptions()
 
-    # 镜像 ubuntu 22.04 64 ubuntu_22_04_x64_20G_alibase_20240530.vhd
-    # 系统盘 ESSD 20G 随实例释放 cloud_essd
-    # 公网IP 分配IPv4
-    # 带宽计费模式 固定带宽 3Mbps PayByBandwidth
-    # 安全组 新建 默认 记得删除
-    # 登录凭证 自定义密码
-    # 自定义数据
+        # v_switch
+        describe_vswitches_request = ecs_models.DescribeVSwitchesRequest(
+            region_id=region_id, is_default=True
+        )
+        describe_vswitches_response = client.describe_vswitches_with_options(
+            describe_vswitches_request, runtime
+        )
+        v_switches = describe_vswitches_response.body.v_switches.v_switch
+        if len(v_switches) == 0:
+            raise ValueError(f"There is no vswitch in region {region_id}, please initialize in web")
+        v_switch_id = v_switches[0].v_switch_id
 
-    # @staticmethod
-    # def runInstances(
-    #     args: List[str],
-    # ) -> None:
-    #     config = SimpleClient.accessConfig()
-    #     client = EcsClient(config)
-    #     system_disk = ecs_models.RunInstancesRequestSystemDisk(
-    #         size='20',
-    #         category='cloud_essd'
-    #     )
-    #     run_instances_request = ecs_20140526_models.RunInstancesRequest(
-    #         region_id='us-west-1',
-    #         image_id='ubuntu_22_04_x64_20G_alibase_20240530.vhd',
-    #         instance_type='ecs.n4.small',
-    #         internet_charge_type='PayByBandwidth',
-    #         system_disk=system_disk,
-    #         user_data='',
-    #         amount=1,
-    #         auto_release_time='2018-01-01T12:05:00Z',
-    #         instance_charge_type='PostPaid',
-    #         password='3214321'
-    #     )
-    #     runtime = util_models.RuntimeOptions()
-    #     try:
-    #         client.run_instances_with_options(run_instances_request, runtime)
-    #     except Exception as error:
-    #         print(error.message)
+        run_instances_request = ecs_models.RunInstancesRequest(
+            amount=1,
+            auto_release_time=SimpleClient.getAliveTime(60),
+            image_id="ubuntu_22_04_x64_20G_alibase_20240530.vhd",
+            instance_charge_type="PostPaid",
+            internet_charge_type="PayByBandwidth",
+            password=EnvClient.get_env(SimpleClient.INSTANCE_PASSWORD),
+            region_id=region_id,
+            security_group_id=security_group_id,
+            user_data=SimpleClient.getUserData(),
+            v_switch_id = v_switch_id,
+        )
+        # additional setting
+        run_instances_request = SimpleClient.specInstanceSetting(run_instances_request, setting)
 
+        run_instances_response = client.run_instances_with_options(
+            run_instances_request, runtime
+        )
+        instance_ids = run_instances_response.body.instance_id_sets.instance_id_set
+        print(f"Instance {instance_ids} have been created")
+        for instance_id in instance_ids:
+            SimpleClient.describeInstanceAttribute(instance_id)
 
+        return instance_ids
+
+    # specificate run instance request by setting
+    # parameter: runInstancesRequest, setting(vCPU, memGiB, bandwidth)
+    # return instance request
+    # Exception: ValueError
+    @staticmethod
+    def specInstanceSetting(
+        request: ecs_models.RunInstancesRequest, setting: Tuple
+    ) -> ecs_models.RunInstancesRequest:
+        # vCPU, memGiB, bandwidth
+        vCPUGiB, bandwidth = setting[:2], setting[-1:]
+        if vCPUGiB == (1, 1):
+            instance_type, disk_category = ("ecs.xn4.small", "cloud_ssd")
+        elif vCPUGiB == (1, 2):
+            instance_type, disk_category = ("ecs.n4.small", "cloud_ssd")
+        elif vCPUGiB == (2, 2):
+            instance_type, disk_category = ("ecs.u1-c1m1.large", "cloud_essd")
+        elif vCPUGiB == (2, 4):
+            instance_type, disk_category = ("ecs.u1-c1m2.large", "cloud_essd")
+        else:
+            raise ValueError(f"vCPUGiB {vCPUGiB} is not supported")
+
+        request.instance_type = instance_type
+        request.internet_max_bandwidth_out = bandwidth
+        request.system_disk = ecs_models.RunInstancesRequestSystemDisk(
+            size="20", category=disk_category
+        )
+        return request
+
+    # get user data
+    # return script string or empty
+    @staticmethod
+    def getUserData() -> str:
+        user_data = ""
+        data_path = os.path.join(os.path.dirname(__file__), "user_data")
+        if os.path.exists(data_path):
+            with open(data_path, "r") as f:
+                user_data = f.read()
+
+        return base64.b64encode(user_data.encode("utf-8")).decode("utf-8")
 
     # describe instances in regions
     # parameter: region_ids
     @staticmethod
     def describeInstances(region_ids: List[str]):
-        config = SimpleClient.accessConfig()
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
 
@@ -325,19 +359,20 @@ class SimpleClient:
                 print(
                     "".join(
                         [
-                            f"{index + 1} {instance.host_name}", "\n",
-                            f"InstanceID:{instance.instance_id} CPU:{instance.cpu} Memory:{int(instance.memory/1024)}GB", "\n",
-                            f"Spec：{instance.instance_type} OS:{instance.ostype}({instance.osname})", "\n",
+                            f"{index + 1} {instance.instance_id}", "\n",
+                            f"Spec：{instance.instance_type} CPU:{instance.cpu} Memory:{int(instance.memory/1024)}GB", "\n",
+                            f"OS:{instance.ostype}({instance.osname}) ",
+                            f"public_ip_address: {instance.public_ip_address.ip_address}", "\n",
                             f"Status：{instance.status}",
                         ]
                     )
                 )
 
     # describe attributes of instance
-    # parameter: region_id, instance_id
+    # parameter: instance_id
     @staticmethod
-    def describeInstanceAttribute(region_id: str, instance_id: str):
-        config = SimpleClient.accessConfig()
+    def describeInstanceAttribute(instance_id: str):
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
 
@@ -349,6 +384,7 @@ class SimpleClient:
             describe_instance_attribute_request, runtime
         )
         instance = describe_instance_attribute_response.body
+        region_id = instance.region_id
         print(f"ECS instance {instance_id} info")
         print(
             "".join(
@@ -356,7 +392,7 @@ class SimpleClient:
                     # summary
                     f"creation_time: {instance.creation_time}", "\n",
                     f"instance_charge_type: {instance.instance_charge_type}", "\n",
-                    f"region_id: {instance.region_id}", "\n",
+                    f"region_id: {region_id}", "\n",
                     # instance and image
                     f"instance_type: {instance.instance_type}", "\n",
                     f"cpu: {instance.cpu}", "\n",
@@ -397,14 +433,15 @@ class SimpleClient:
         describe_user_data_response = client.describe_user_data_with_options(
             describe_user_data_request, runtime
         )
-        user_data = describe_user_data_response.body.user_data
-        print(f"user_data: {user_data}")
+        user_data_base64 = describe_user_data_response.body.user_data
+        user_data = base64.b64decode(user_data_base64).decode('utf-8')
+        print(f"user_data:\n{user_data}")
 
     # reboot instance
     # parameter: instance_id
     @staticmethod
     def rebootInstance(instance_id: str):
-        config = SimpleClient.accessConfig()
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
 
@@ -416,7 +453,7 @@ class SimpleClient:
     # parameter: instance_id
     @staticmethod
     def deleteInstance(instance_id: str):
-        config = SimpleClient.accessConfig()
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
 
@@ -425,6 +462,7 @@ class SimpleClient:
         print(f"ECS instance {instance_id} has been released")
 
     # get alive time after minutes
+    # parameter: alive_minutes
     # return: UTC+0, format should be yyyy-MM-ddTHH:mm:00Z
     @staticmethod
     def getAliveTime(alive_minutes: int) -> str:
@@ -439,7 +477,7 @@ class SimpleClient:
     # parameter: instance_id, alive_minutes
     @staticmethod
     def autoReleaseInstance(instance_id: str, alive_minutes: int):
-        config = SimpleClient.accessConfig()
+        config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
 
@@ -450,26 +488,6 @@ class SimpleClient:
         client.modify_instance_auto_release_time_with_options(request, runtime)
         print(f"ECS instance {instance_id} has been set to release at {auto_release_tm}")
 
+
 if __name__ == "__main__":
-    # region_ids = StringClient.split(sys.argv[1], ',', 50)
-    # SimpleClient.describeInstances(region_ids)
-
-    # region_id = sys.argv[1]
-    # instance_id = sys.argv[2]
-    # SimpleClient.describeInstanceAttribute(region_id, instance_id)
-
-    # region_id = sys.argv[1]
-    # group_id = sys.argv[2]
-    # SimpleClient.deleteSecurityGroup(region_id, group_id)
-
-    # region_id = sys.argv[1]
-    # security_group_name = sys.argv[2]
-    # group_id = SimpleClient.createSecurityGroup(region_id)
-    # if SimpleClient.addPermissions(region_id, group_id, 9000):
-    #     print("nice")
-    # SimpleClient.removePermissions(region_id, group_id, 9000)
-
-    #SimpleClient.describeSecurityGroups(region_id=region_id)
-    # print(SimpleClient.describeSecurityGroups(region_id=region_id, security_group_name=security_group_name))
-    # SimpleClient.rebootInstance(region_id, instance_id)
-    # SimpleClient.delete(region_id, instance_id)
+    pass

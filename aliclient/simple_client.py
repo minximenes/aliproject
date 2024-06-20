@@ -273,7 +273,7 @@ class SimpleClient:
         )
         v_switches = describe_vswitches_response.body.v_switches.v_switch
         if len(v_switches) == 0:
-            raise ValueError(f"There is no vswitch in region {region_id}, please initialize in web")
+            raise ValueError(f"There is no v-switch in region {region_id}, please initialize in web")
         v_switch_id = v_switches[0].v_switch_id
 
         run_instances_request = ecs_models.RunInstancesRequest(
@@ -310,7 +310,7 @@ class SimpleClient:
         request: ecs_models.RunInstancesRequest, setting: Tuple
     ) -> ecs_models.RunInstancesRequest:
         # vCPU, memGiB, bandwidth
-        vCPUGiB, bandwidth = setting[:2], setting[-1:]
+        vCPUGiB, bandwidth = setting[:2], setting[-1]
         if vCPUGiB == (1, 1):
             instance_type, disk_category = ("ecs.xn4.small", "cloud_ssd")
         elif vCPUGiB == (1, 2):
@@ -354,7 +354,7 @@ class SimpleClient:
             response = client.describe_instances_with_options(request, runtime)
             instances = response.body.instances.instance
 
-            print(f"ECS instances list in {region_id}")
+            print(f"ECS instances in {region_id}")
             for index, instance in enumerate(instances):
                 print(
                     "".join(
@@ -415,7 +415,7 @@ class SimpleClient:
             describe_disks_request, runtime
         )
         disks = describe_disks_response.body.disks.disk
-        print(f"ECS instance {instance_id} disk info")
+        print("disk info")
         for disk in disks:
             print(
                 "".join(

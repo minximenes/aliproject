@@ -1,5 +1,4 @@
 include requirements.txt
 include aliclient/user_data
-recursive-include tests *
 recursive-exclude .vscode *
 recursive-exclude * __pycache__

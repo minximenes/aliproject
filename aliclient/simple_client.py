@@ -312,13 +312,13 @@ class SimpleClient:
         # vCPU, memGiB, bandwidth
         vCPUGiB, bandwidth = setting[:2], setting[-1]
         if vCPUGiB == (1, 1):
-            instance_type, disk_category = ("ecs.xn4.small", "cloud_ssd")
+            instance_type, disk_category = ("ecs.xn4.small", "cloud_efficiency")
         elif vCPUGiB == (1, 2):
-            instance_type, disk_category = ("ecs.n4.small", "cloud_ssd")
+            instance_type, disk_category = ("ecs.n4.small", "cloud_efficiency")
         elif vCPUGiB == (2, 2):
-            instance_type, disk_category = ("ecs.u1-c1m1.large", "cloud_essd")
+            instance_type, disk_category = ("ecs.u1-c1m1.large", "cloud_essd_entry")
         elif vCPUGiB == (2, 4):
-            instance_type, disk_category = ("ecs.u1-c1m2.large", "cloud_essd")
+            instance_type, disk_category = ("ecs.u1-c1m2.large", "cloud_essd_entry")
         else:
             raise ValueError(f"vCPUGiB {vCPUGiB} is not supported")
 

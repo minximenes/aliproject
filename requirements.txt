@@ -1,0 +1,10 @@
+# -r otherfiles.txt
+# command:
+#   pip3 install -r requirements.txt
+
+click
+alibabacloud_ecs20140526>=3.0.1, <4.0.0
+alibabacloud_tea_openapi>=0.3.8, <1.0.0
+alibabacloud_tea_util>=0.3.11, <1.0.0
+alibabacloud_darabonba_string>=0.0.1, <1.0.0
+alibabacloud_darabonba_env>=0.0.1, <1.0.0

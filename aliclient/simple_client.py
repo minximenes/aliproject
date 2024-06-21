@@ -2,6 +2,8 @@
 import base64
 import os
 import sys
+import time
+import qrcode
 
 from datetime import datetime, timedelta
 from typing import Dict, List, Tuple
@@ -321,9 +323,66 @@ class SimpleClient:
         instance_ids = run_instances_response.body.instance_id_sets.instance_id_set
         print(f"Instance {instance_ids} have been created, will be released at {auto_release_time}")
         for instance_id in instance_ids:
-            SimpleClient.describeInstanceAttribute(instance_id)
+            SimpleClient.printInstanceSsqrcode(instance_id)
 
         return instance_ids
+
+    @staticmethod
+    def printSsqrcode(
+        ip: str, port: int = None, passcode: str = None, aead: str = None
+    ):
+        """
+        print ascii ss qrcode
+        @param: server ip, port, passcode, AEAD method
+        """
+        if not port:
+            port = 8388
+        if not passcode:
+            passcode = "12qwaszx"
+        if not aead:
+            aead = "chacha20-ietf-poly1305"
+
+        ss = f"{aead}:{passcode}@{ip}:{port}"
+        print(ss)
+        ss_base64 = base64.b64encode(ss.encode("utf-8")).decode("utf-8")
+        qr = qrcode.QRCode()
+        qr.add_data(f"ss://{ss_base64}")
+        qr.print_ascii()
+
+    @staticmethod
+    def printInstanceSsqrcode(instance_id):
+        """
+        print instance's ss qrcode by waiting for running
+        @param: instance_id
+        """
+        config = SimpleClient.Config()
+        client = EcsClient(config)
+        runtime = util_models.RuntimeOptions()
+
+        describe_instance_attribute_request = ecs_models.DescribeInstanceAttributeRequest(
+            instance_id=instance_id
+        )
+        describe_instance_attribute_response = client.describe_instance_attribute_with_options(
+            describe_instance_attribute_request, runtime
+        )
+        instance = describe_instance_attribute_response.body
+
+        starttm = time.perf_counter()
+        timeouts = 120
+
+        while instance.status != "Running":
+            # timeout after 120s
+            if time.perf_counter() - starttm > timeouts:
+                print(f"instance {instance_id} is not running in {timeouts}s")
+                return
+            # retry every 5s
+            time.sleep(5)
+            describe_instance_attribute_response = client.describe_instance_attribute_with_options(
+                describe_instance_attribute_request, runtime
+            )
+            instance = describe_instance_attribute_response.body
+
+        SimpleClient.printSsqrcode(instance.public_ip_address.ip_address[0])
 
     @staticmethod
     def specInstanceSetting(

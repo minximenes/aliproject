@@ -10,6 +10,7 @@ AUTHOR_EMAIL = "min.ximenes@gmail.com"
 DESCRIPTION = "a simple client for ali openapi"
 REQUIRES = [
     "click",
+    "qrcode",
     "alibabacloud_ecs20140526>=3.0.1, <4.0.0",
     "alibabacloud_tea_openapi>=0.3.8, <1.0.0",
     "alibabacloud_tea_util>=0.3.11, <1.0.0",

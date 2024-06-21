@@ -29,7 +29,7 @@ def run():
 @run.group()
 def instance():
     """
-    instance create | delete | release | reboot | desc
+    instance create | delete | release | reboot | desc | qrcode
     """
     pass
 
@@ -111,6 +111,15 @@ def desc(region, instance):
     else:
         # describe instance
         SimpleClient.describeInstanceAttribute(instance)
+
+
+@instance.command
+@click.option("--instance", "-i", required=True, help="instance id")
+def qrcode(instance):
+    """
+    print instance's ss qrcode
+    """
+    SimpleClient.printInstanceSsqrcode(instance)
 
 
 # security group

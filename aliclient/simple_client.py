@@ -11,6 +11,7 @@ from alibabacloud_ecs20140526.client import Client as EcsClient
 from alibabacloud_ecs20140526 import models as ecs_models
 from alibabacloud_tea_util import models as util_models
 from alibabacloud_darabonba_env.client import Client as EnvClient
+from alibabacloud_darabonba_string.client import Client as StringClient
 
 
 class SimpleClient:
@@ -22,9 +23,13 @@ class SimpleClient:
     ACCESS_KEY_SECRET = "ALIBABA_CLOUD_ACCESS_KEY_SECRET"
     INSTANCE_PASSWORD = "ALIBABA_CLOUD_INSTANCE_PASSWORD"
 
-    # create configuration
     @staticmethod
     def Config(endpoint: str = "ecs.aliyuncs.com") -> openapi_models.Config:
+        """
+        create configuration
+        @param: endpoint
+        @return Config
+        """
         config = openapi_models.Config(
             access_key_id=EnvClient.get_env(SimpleClient.ACCESS_KEY_ID),
             access_key_secret=EnvClient.get_env(SimpleClient.ACCESS_KEY_SECRET),
@@ -34,11 +39,13 @@ class SimpleClient:
         )
         return config
 
-    # describe security groups
-    # option parameter: region_id, security_group_name(optional)
-    # return security_group_ids
     @staticmethod
     def describeSecurityGroups(**kwargs: Dict) -> List[str]:
+        """
+        describe security groups
+        @param key: region_id, security_group_name(optional)
+        @return security_group_ids
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -61,20 +68,22 @@ class SimpleClient:
                 group_attr_request, runtime
             )
             permissions = security_group_response.body.permissions.permission
-            print(f"Security group {group_id}/{group_name} permission info")
-            for permission in permissions:
-                print(
+            print(f"Security group {group_id}/{group_name} permission info:")
+            SimpleClient.printIndent(
+                *[
                     "".join(
                         [
-                            f"direction: {permission.direction} ",
-                            f"policy: {permission.policy} ",
-                            f"priority: {permission.priority} ",
-                            f"ip_protocol: {permission.ip_protocol} ",
-                            f"port_range: {permission.port_range} ",
-                            f"source_cidr_ip: {permission.source_cidr_ip}"
+                            f"direction: {permis.direction} ",
+                            f"policy: {permis.policy} ",
+                            f"priority: {permis.priority} ",
+                            f"ip_protocol: {permis.ip_protocol} ",
+                            f"port_range: {permis.port_range} ",
+                            f"source_cidr_ip: {permis.source_cidr_ip}",
                         ]
                     )
-                )
+                    for permis in permissions
+                ]
+            )
         return [group.security_group_id for group in security_groups]
 
     # create security group with initial permissions
@@ -276,9 +285,10 @@ class SimpleClient:
             raise ValueError(f"There is no v-switch in region {region_id}, please initialize in web")
         v_switch_id = v_switches[0].v_switch_id
 
+        auto_release_time = SimpleClient.getAliveTime(60)
         run_instances_request = ecs_models.RunInstancesRequest(
             amount=1,
-            auto_release_time=SimpleClient.getAliveTime(60),
+            auto_release_time=auto_release_time,
             image_id="ubuntu_22_04_x64_20G_alibase_20240530.vhd",
             instance_charge_type="PostPaid",
             internet_charge_type="PayByBandwidth",
@@ -295,7 +305,7 @@ class SimpleClient:
             run_instances_request, runtime
         )
         instance_ids = run_instances_response.body.instance_id_sets.instance_id_set
-        print(f"Instance {instance_ids} have been created")
+        print(f"Instance {instance_ids} have been created, will be released at {auto_release_time}")
         for instance_id in instance_ids:
             SimpleClient.describeInstanceAttribute(instance_id)
 
@@ -354,19 +364,22 @@ class SimpleClient:
             response = client.describe_instances_with_options(request, runtime)
             instances = response.body.instances.instance
 
-            print(f"ECS instances in {region_id}")
+            print(f"ECS instances in {region_id}:")
             for index, instance in enumerate(instances):
-                print(
-                    "".join(
-                        [
-                            f"{index + 1} {instance.instance_id}", "\n",
-                            f"Spec：{instance.instance_type} CPU:{instance.cpu} Memory:{int(instance.memory/1024)}GB", "\n",
-                            f"OS:{instance.ostype}({instance.osname}) ",
-                            f"public_ip_address: {instance.public_ip_address.ip_address}", "\n",
-                            f"Status：{instance.status}",
-                        ]
-                    )
+                SimpleClient.printIndent(
+                    f"{index + 1} {instance.instance_id}",
+                    f"Spec：{instance.instance_type} CPU:{instance.cpu} Memory:{int(instance.memory/1024)}GB",
+                    f"OS:{instance.osname} public_ip_address: {instance.public_ip_address.ip_address}",
+                    f"Status：{instance.status}",
                 )
+
+    @staticmethod
+    def printIndent(*args, indent: int = 4):
+        """
+        print args with given indent
+        @param: [arg], indent default 4
+        """
+        print("\n".join([f'{" " * indent}{arg}' for arg in args]))
 
     # describe attributes of instance
     # parameter: instance_id
@@ -385,27 +398,23 @@ class SimpleClient:
         )
         instance = describe_instance_attribute_response.body
         region_id = instance.region_id
-        print(f"ECS instance {instance_id} info")
-        print(
-            "".join(
-                [
-                    # summary
-                    f"creation_time: {instance.creation_time}", "\n",
-                    f"instance_charge_type: {instance.instance_charge_type}", "\n",
-                    f"region_id: {region_id}", "\n",
-                    # instance and image
-                    f"instance_type: {instance.instance_type}", "\n",
-                    f"cpu: {instance.cpu}", "\n",
-                    f"memory: {int(instance.memory/1024)}GB", "\n",
-                    f"image_id: {instance.image_id}", "\n",
-                    # internet
-                    f"internet_charge_type: {instance.internet_charge_type}", "\n",
-                    f"public_ip_address: {instance.public_ip_address.ip_address}", "\n",
-                    f"internet_max_bandwidth_in: {instance.internet_max_bandwidth_in}", "\n",
-                    f"internet_max_bandwidth_out: {instance.internet_max_bandwidth_out}", "\n",
-                    f"security_group_id: {instance.security_group_ids.security_group_id}"
-                ]
-            )
+        print(f"ECS instance {instance_id} info:")
+        SimpleClient.printIndent(
+            # summary
+            f"creation_time: {instance.creation_time}",
+            f"instance_charge_type: {instance.instance_charge_type}",
+            f"region_id: {region_id}",
+            # instance and image
+            f"instance_type: {instance.instance_type}",
+            f"cpu: {instance.cpu}",
+            f"memory: {int(instance.memory/1024)}GB",
+            f"image_id: {instance.image_id}",
+            # internet
+            f"internet_charge_type: {instance.internet_charge_type}",
+            f"public_ip_address: {instance.public_ip_address.ip_address}",
+            f"internet_max_bandwidth_in: {instance.internet_max_bandwidth_in}",
+            f"internet_max_bandwidth_out: {instance.internet_max_bandwidth_out}",
+            f"security_group_id: {instance.security_group_ids.security_group_id}",
         )
         # system disk
         describe_disks_request = ecs_models.DescribeDisksRequest(
@@ -415,16 +424,12 @@ class SimpleClient:
             describe_disks_request, runtime
         )
         disks = describe_disks_response.body.disks.disk
-        print("disk info")
+        print("disk info:")
         for disk in disks:
-            print(
-                "".join(
-                    [
-                        f"category: {disk.category}", "\n"
-                        f"size: {disk.size}GB", "\n"
-                        f"delete_with_instance: {disk.delete_with_instance}"
-                    ]
-                )
+            SimpleClient.printIndent(
+                f"category: {disk.category}",
+                f"size: {disk.size}GB",
+                f"delete_with_instance: {disk.delete_with_instance}",
             )
         # user data
         describe_user_data_request = ecs_models.DescribeUserDataRequest(
@@ -435,7 +440,8 @@ class SimpleClient:
         )
         user_data_base64 = describe_user_data_response.body.user_data
         user_data = base64.b64decode(user_data_base64).decode('utf-8')
-        print(f"user_data:\n{user_data}")
+        print(f"user_data:")
+        SimpleClient.printIndent(*StringClient.split(user_data, "\n", None))
 
     # reboot instance
     # parameter: instance_id

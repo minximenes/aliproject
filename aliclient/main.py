@@ -86,8 +86,10 @@ def reboot(instance):
     SimpleClient.rebootInstance(instance)
 
 
-# instance desc option check
 def instance_desc_option(ctx, param, value):
+    """
+    instance desc option check
+    """
     if not value:
         region = ctx.params.get("region")
         if not region:

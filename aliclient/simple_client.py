@@ -28,7 +28,7 @@ class SimpleClient:
         """
         create configuration
         @param: endpoint
-        @return Config
+        @return: Config
         """
         config = openapi_models.Config(
             access_key_id=EnvClient.get_env(SimpleClient.ACCESS_KEY_ID),
@@ -44,7 +44,7 @@ class SimpleClient:
         """
         describe security groups
         @param key: region_id, security_group_name(optional)
-        @return security_group_ids
+        @return: security_group_ids
         """
         config = SimpleClient.Config()
         client = EcsClient(config)
@@ -86,13 +86,15 @@ class SimpleClient:
             )
         return [group.security_group_id for group in security_groups]
 
-    # create security group with initial permissions
-    # parameter: region_id, security_group_name
-    # return security_group_id
     @staticmethod
     def createSecurityGroup(
         region_id: str, security_group_name: str = "socks"
     ) -> str:
+        """
+        create security group with initial permissions
+        @param: region_id, security_group_name
+        @return: security_group_id
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -120,11 +122,13 @@ class SimpleClient:
         print(f'security group {security_group_id} has been initialized')
         return security_group_id
 
-    # get initial permissions
-    # TCP22, RDP3389, ICMP-1, TCP5000, TCP/UDP8388
-    # return list of permissons
     @staticmethod
     def getInitialPermissions() -> List[Dict]:
+        """
+        get initial permissions
+        TCP22, RDP3389, ICMP-1, TCP5000, TCP/UDP8388
+        @return: list of permissons
+        """
         return [
             {
                 "policy": "accept",
@@ -170,11 +174,13 @@ class SimpleClient:
             },
         ]
 
-    # delete security group that not related to any instance
-    # parameter: region_id, security_group_id
-    # Exception: ValueError
     @staticmethod
     def deleteSecurityGroup(region_id, security_group_id):
+        """
+        delete security group that not related to any instance
+        @param: region_id, security_group_id
+        @Exception: ValueError
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -199,10 +205,12 @@ class SimpleClient:
         client.delete_security_group_with_options(delete_security_group_request, runtime)
         print(f'Security group {security_group_id} has been deleted')
 
-    # add permissions in security group
-    # parameter: region_id, security_group_id, port
     @staticmethod
     def addPermissions(region_id: str, security_group_id: str, port: int):
+        """
+        add permissions in security group
+        @param: region_id, security_group_id, port
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -219,10 +227,12 @@ class SimpleClient:
         client.authorize_security_group_with_options(authorize_security_group_request, runtime)
         print(f'TCP/UDP {port} has been added to security group')
 
-    # remove permissions in security group
-    # parameter: region_id, security_group_id, port
     @staticmethod
     def removePermissions(region_id: str, security_group_id: str, port: int):
+        """
+        remove permissions in security group
+        @param: region_id, security_group_id, port
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -239,11 +249,13 @@ class SimpleClient:
         client.revoke_security_group_with_options(revoke_security_group_request, runtime)
         print(f'TCP/UDP {port} has been removed from security group')
 
-    # get permissions by port
-    # parameters: port
-    # return list of TCP/UDP permissons
     @staticmethod
     def getPermListByPort(port: int) -> List[Dict]:
+        """
+        get permissions by port
+        @param: port
+        @return: list of TCP/UDP permissons
+        """
         return [
             {
                 "policy": "accept",
@@ -261,14 +273,16 @@ class SimpleClient:
             },
         ]
 
-    # create instance
-    # parameter: region_id, security_group_id, setting(vCPU, memGiB, bandwidth)
-    # return instance_ids
-    # Exception: ValueError
     @staticmethod
     def createInstance(
         region_id: str, security_group_id: str, setting: Tuple = (1, 1, 3)
     ) -> List[str]:
+        """
+        create instance
+        @param: region_id, security_group_id, setting(vCPU, memGiB, bandwidth)
+        @return: instance_ids
+        @Exception: ValueError
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -311,14 +325,16 @@ class SimpleClient:
 
         return instance_ids
 
-    # specificate run instance request by setting
-    # parameter: runInstancesRequest, setting(vCPU, memGiB, bandwidth)
-    # return instance request
-    # Exception: ValueError
     @staticmethod
     def specInstanceSetting(
         request: ecs_models.RunInstancesRequest, setting: Tuple
     ) -> ecs_models.RunInstancesRequest:
+        """
+        specificate run instance request by setting
+        @param: runInstancesRequest, setting(vCPU, memGiB, bandwidth)
+        @return: instance request
+        @Exception: ValueError
+        """
         # vCPU, memGiB, bandwidth
         vCPUGiB, bandwidth = setting[:2], setting[-1]
         if vCPUGiB == (1, 1):
@@ -339,10 +355,12 @@ class SimpleClient:
         )
         return request
 
-    # get user data
-    # return script string or empty
     @staticmethod
     def getUserData() -> str:
+        """
+        get user data
+        @return: script string or empty
+        """
         user_data = ""
         data_path = os.path.join(os.path.dirname(__file__), "user_data")
         if os.path.exists(data_path):
@@ -351,10 +369,12 @@ class SimpleClient:
 
         return base64.b64encode(user_data.encode("utf-8")).decode("utf-8")
 
-    # describe instances in regions
-    # parameter: region_ids
     @staticmethod
     def describeInstances(region_ids: List[str]):
+        """
+        describe instances in regions
+        @param: region_ids
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -381,10 +401,12 @@ class SimpleClient:
         """
         print("\n".join([f'{" " * indent}{arg}' for arg in args]))
 
-    # describe attributes of instance
-    # parameter: instance_id
     @staticmethod
     def describeInstanceAttribute(instance_id: str):
+        """
+        describe attributes of instance
+        @param: instance_id
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -443,10 +465,12 @@ class SimpleClient:
         print(f"user_data:")
         SimpleClient.printIndent(*StringClient.split(user_data, "\n", None))
 
-    # reboot instance
-    # parameter: instance_id
     @staticmethod
     def rebootInstance(instance_id: str):
+        """
+        reboot instance
+        @param: instance_id
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -455,10 +479,12 @@ class SimpleClient:
         client.reboot_instance_with_options(request, runtime)
         print(f"ECS instance {instance_id} has been rebooted")
 
-    # delete instance
-    # parameter: instance_id
     @staticmethod
     def deleteInstance(instance_id: str):
+        """
+        delete instance
+        @param: instance_id
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()
@@ -467,11 +493,13 @@ class SimpleClient:
         client.delete_instance_with_options(request, runtime)
         print(f"ECS instance {instance_id} has been released")
 
-    # get alive time after minutes
-    # parameter: alive_minutes
-    # return: UTC+0, format should be yyyy-MM-ddTHH:mm:00Z
     @staticmethod
     def getAliveTime(alive_minutes: int) -> str:
+        """
+        get alive time after minutes
+        @param: alive_minutes
+        @return: UTC+0, format should be yyyy-MM-ddTHH:mm:00Z
+        """
         if alive_minutes < 30:
             alive_minutes = 30
 
@@ -479,10 +507,12 @@ class SimpleClient:
         utc_later = utc_now + timedelta(minutes=alive_minutes)
         return utc_later.strftime('%Y-%m-%dT%H:%M:00Z')
 
-    # set auto release time
-    # parameter: instance_id, alive_minutes
     @staticmethod
     def autoReleaseInstance(instance_id: str, alive_minutes: int):
+        """
+        set auto release time
+        @param: instance_id, alive_minutes
+        """
         config = SimpleClient.Config()
         client = EcsClient(config)
         runtime = util_models.RuntimeOptions()

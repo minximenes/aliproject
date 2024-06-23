@@ -49,6 +49,7 @@ def create(region, group, setting, alive):
             kwargs["setting"] = setting
         if alive:
             kwargs["alive_minutes"] = alive
+
         SimpleClient.createInstance(**kwargs)
     else:
         print("Operation stop!")

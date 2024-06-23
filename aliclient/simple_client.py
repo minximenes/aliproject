@@ -277,7 +277,7 @@ class SimpleClient:
 
     @staticmethod
     def createInstance(
-        region_id: str, security_group_id: str, setting: Tuple = (1, 1, 3)
+        region_id: str, security_group_id: str, setting: Tuple = (1, 1, 2)
     ) -> List[str]:
         """
         create instance
@@ -307,6 +307,8 @@ class SimpleClient:
             auto_release_time=auto_release_time,
             image_id="ubuntu_22_04_x64_20G_alibase_20240530.vhd",
             instance_charge_type="PostPaid",
+            spot_strategy="SpotAsPriceGo",
+            spot_duration=0,
             internet_charge_type="PayByBandwidth",
             password=EnvClient.get_env(SimpleClient.INSTANCE_PASSWORD),
             region_id=region_id,

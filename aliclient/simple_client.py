@@ -277,11 +277,11 @@ class SimpleClient:
 
     @staticmethod
     def createInstance(
-        region_id: str, security_group_id: str, setting: Tuple = (1, 1, 2)
+        region_id: str, security_group_id: str, setting: Tuple = (1, 1, 2), alive_minutes: int = 60
     ) -> List[str]:
         """
         create instance
-        @param: region_id, security_group_id, setting(vCPU, memGiB, bandwidth)
+        @param: region_id, security_group_id, setting(vCPU, memGiB, bandwidth), alive_minutes
         @return: instance_ids
         @Exception: ValueError
         """
@@ -301,7 +301,7 @@ class SimpleClient:
             raise ValueError(f"There is no v-switch in region {region_id}, please initialize in web")
         v_switch_id = v_switches[0].v_switch_id
 
-        auto_release_time = SimpleClient.getAliveTime(60)
+        auto_release_time = SimpleClient.getAliveTime(alive_minutes)
         run_instances_request = ecs_models.RunInstancesRequest(
             amount=1,
             auto_release_time=auto_release_time,

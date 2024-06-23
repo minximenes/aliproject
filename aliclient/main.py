@@ -37,23 +37,22 @@ def instance():
 @instance.command
 @click.option("--region", "-r", required=True, help="region id")
 @click.option("--group", "-g", required=True, help="security group id")
-@click.option(
-    "--setting",
-    "-s",
-    type=(int, int, int),
-    help="setting of vCPU, memGiB, bandwidthMbps",
-)
-def create(region, group, setting):
+@click.option("--setting", "-s", type=(int, int, int), help="setting of vCPU, memGiB, bandwidthMbps")
+@click.option("--alive", "-a", type=int, help="alive minutes")
+def create(region, group, setting, alive):
     """
     create instance with security group and setting of vCPU, memGiB, bandwidth
     """
     if click.confirm("Create new instance will be charged. You sure want to create?"):
-        if not setting:
-            SimpleClient.createInstance(region, group)
-        else:
-            SimpleClient.createInstance(region, group, setting)
+        kwargs = {"region_id": region, "security_group_id": group}
+        if setting:
+            kwargs["setting"] = setting
+        if alive:
+            kwargs["alive_minutes"] = alive
+        SimpleClient.createInstance(**kwargs)
     else:
         print("Operation stop!")
+
 
 @instance.command
 @click.option("--instance", "-i", required=True, help="instance id")
@@ -93,7 +92,7 @@ def instance_desc_option(ctx, param, value):
     if not value:
         region = ctx.params.get("region")
         if not region:
-            raise click.UsageError("--instance is required when --region is not provided") 
+            raise click.UsageError("--instance is required when --region is not provided")
     return value
 
 

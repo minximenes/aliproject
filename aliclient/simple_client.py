@@ -527,6 +527,20 @@ class SimpleClient:
         SimpleClient.printIndent(*StringClient.split(user_data, "\n", None))
 
     @staticmethod
+    def stopInstance(instance_id: str):
+        """
+        stop instance
+        @param: instance_id
+        """
+        config = SimpleClient.Config()
+        client = EcsClient(config)
+        runtime = util_models.RuntimeOptions()
+
+        request = ecs_models.StopInstanceRequest(instance_id=instance_id)
+        client.stop_instance_with_options(request, runtime)
+        print(f"ECS instance {instance_id} has been stopped")
+
+    @staticmethod
     def rebootInstance(instance_id: str):
         """
         reboot instance

@@ -29,7 +29,7 @@ def run():
 @run.group()
 def instance():
     """
-    instance create | delete | release | reboot | desc | qrcode
+    instance create | delete | release | stop | reboot | desc | qrcode
     """
     pass
 
@@ -75,6 +75,15 @@ def release(instance, alive):
     release instance after given minutes
     """
     SimpleClient.autoReleaseInstance(instance, alive)
+
+
+@instance.command
+@click.option("--instance", "-i", required=True, help="instance id")
+def stop(instance):
+    """
+    stop instance
+    """
+    SimpleClient.stopInstance(instance)
 
 
 @instance.command

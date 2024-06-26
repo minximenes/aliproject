@@ -1,0 +1,9 @@
+#!/bin/bash
+
+VPN_USERNAME="alttest"
+VPN_PASSWORD="12qwaszx"
+VPN_IPSEC_PSK="f43d5c82b5f60034809a2f91a428ab2fafb4444a2b09489014aabee9f40e"
+
+wget https://git.io/vpnsetup -O vpnsetup.sh && \
+sudo VPN_IPSEC_PSK=$VPN_IPSEC_PSK VPN_USER=$VPN_USERNAME VPN_PASSWORD=$VPN_PASSWORD sh vpnsetup.sh
+# listen to udp 1701, 500, 4500

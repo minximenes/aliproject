@@ -90,7 +90,7 @@ class SimpleClient:
 
     @staticmethod
     def createSecurityGroup(
-        region_id: str, security_group_name: str = "socks"
+        region_id: str, security_group_name: str = "vpn"
     ) -> str:
         """
         create security group with initial permissions
@@ -128,7 +128,7 @@ class SimpleClient:
     def getInitialPermissions() -> List[Dict]:
         """
         get initial permissions
-        TCP22, RDP3389, ICMP-1, TCP5000, TCP/UDP8388
+        TCP22, RDP3389, ICMP-1, TCP5000, TCP/UDP8388, TCP1723
         @return: list of permissons
         """
         return [
@@ -165,14 +165,21 @@ class SimpleClient:
                 "ip_protocol": "TCP",
                 "port_range": "8388/8388",
                 "source_cidr_ip": "0.0.0.0/0",
-                "description": "vpn",
+                "description": "shadow",
             },
             {
                 "policy": "accept",
                 "ip_protocol": "UDP",
                 "port_range": "8388/8388",
                 "source_cidr_ip": "0.0.0.0/0",
-                "description": "vpn",
+                "description": "shadow",
+            },
+            {
+                "policy": "accept",
+                "ip_protocol": "TCP",
+                "port_range": "1723/1723",
+                "source_cidr_ip": "0.0.0.0/0",
+                "description": "pptp",
             },
         ]
 
@@ -424,6 +431,9 @@ class SimpleClient:
         """
         user_data = ""
         data_path = os.path.join(os.path.dirname(__file__), "user_data")
+        # data_path = os.path.join(os.path.dirname(__file__), "user_data_shadow")
+        # data_path = os.path.join(os.path.dirname(__file__), "user_data_pptp")
+        # data_path = os.path.join(os.path.dirname(__file__), "user_data_l2tp")
         if os.path.exists(data_path):
             with open(data_path, "r") as f:
                 user_data = f.read()

@@ -1,13 +1,15 @@
 #!/bin/bash
 
+echo "start to install user_date_pptp"
+
 # parameter
 PPTP_USER=$([ -n "$1" ] && echo "$1" || echo "alttest")
 PPTP_PWD=$([ -n "$2" ] && echo "$2" || echo "12qwaszx")
 
-sudo apt-get update
-sudo apt-get install -y pptpd
+sudo apt-get update >/dev/null 2>&1
+sudo apt-get install -y pptpd >/dev/null
 # listen to tcp 1723
-# ppp 
+# ppp
 sudo echo "localip 10.10.10.1" >> /etc/pptpd.conf
 sudo echo "remoteip 10.10.10.101-200" >> /etc/pptpd.conf
 sudo echo "$PPTP_USER pptpd $PPTP_PWD *" >> /etc/ppp/chap-secrets
@@ -24,3 +26,5 @@ sudo sysctl -p
 sudo iptables -t nat -A POSTROUTING -s 10.10.10.0/24 -o eth0 -j MASQUERADE
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent
 sudo service netfilter-persistent save
+
+echo "finish to install user_date_pptp"

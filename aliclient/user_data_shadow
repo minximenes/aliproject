@@ -1,12 +1,14 @@
 #!/bin/bash
 
+echo "start to install user_date_shadow"
+
 # parameter
 PORT=$([ -n "$1" ] && echo $1 || echo 8388)
 PWD=$([ -n "$2" ] && echo "$2" || echo "12qwaszx")
 AEAD=$([ -n "$3" ] && echo "$3" || echo "chacha20-ietf-poly1305")
 
-sudo apt-get update
-sudo apt-get install -y shadowsocks-libev
+sudo apt-get update >/dev/null 2>&1
+sudo apt-get install -y shadowsocks-libev >/dev/null
 # configuration
 cat << EOF > $PORT.tmp
 {
@@ -23,3 +25,5 @@ sudo mv -f ./$PORT.tmp /etc/shadowsocks-libev/config.json
 # restart service
 sudo systemctl enable shadowsocks-libev
 sudo systemctl restart shadowsocks-libev
+
+echo "finish to install user_date_shadow"

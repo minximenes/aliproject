@@ -1,11 +1,13 @@
 #!/bin/bash
 
+echo "start to install user_date_ikev2"
+
 # parameter
 IKEV_USER=$([ -n "$1" ] && echo "$1" || echo "alttest")
 IKEV_PWD=$([ -n "$2" ] && echo "$2" || echo "12qwaszx")
 
-sudo apt-get update
-sudo apt-get install -y strongswan strongswan-pki libstrongswan-extra-plugins libtss2-tcti-tabrmd0
+sudo apt-get update >/dev/null 2>&1
+sudo apt-get install -y strongswan strongswan-pki libstrongswan-extra-plugins libtss2-tcti-tabrmd0 >/dev/null
 # sudo apt-get install -y moreutils strongswan strongswan-pki libstrongswan-extra-plugins libtss2-tcti-tabrmd0
 # listen to udp 500, 4500
 # this vpn port is banned in out-region
@@ -95,3 +97,34 @@ sudo iptables -t nat -A POSTROUTING -s 10.10.10.10/24 -o eth0 -j MASQUERADE
 sudo iptables -t mangle -A FORWARD --match policy --pol ipsec --dir in -s 10.10.10.10/24 -o eth0 -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss 1361:1536 -j TCPMSS --set-mss 1360
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent
 sudo service netfilter-persistent save
+
+# http
+sudo apt-get install -y python3 python3-pip >/dev/null
+sudo pip3 install Flask gunicorn
+
+wget https://raw.githubusercontent.com/minximenes/ssscripts/main/httpservice.py
+pdir=$(cd `dirname "$0"` &>/dev/null && pwd)
+cat << EOF > http.tmp
+[Unit]
+Description=flask http
+After=network.target
+
+[Service]
+User=$(whoami)
+Group=$(groups)
+WorkingDirectory=$pdir
+Environment="PYTHONPATH=$pdir"
+ExecStart=gunicorn -b 0.0.0.0:5000 --workers 4 httpservice:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo mv http.tmp /etc/systemd/system/flaskhttp.service
+sudo systemctl daemon-reload
+sudo systemctl enable flaskhttp.service
+sudo systemctl restart flaskhttp.service
+
+echo "finish to install user_date_ikev2"

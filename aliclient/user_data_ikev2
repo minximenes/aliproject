@@ -8,7 +8,6 @@ IKEV_PWD=$([ -n "$2" ] && echo "$2" || echo "12qwaszx")
 
 sudo apt-get update >/dev/null 2>&1
 sudo apt-get install -y strongswan strongswan-pki libstrongswan-extra-plugins libtss2-tcti-tabrmd0 >/dev/null
-# sudo apt-get install -y moreutils strongswan strongswan-pki libstrongswan-extra-plugins libtss2-tcti-tabrmd0
 # listen to udp 500, 4500
 # this vpn port is banned in out-region
 
@@ -19,13 +18,13 @@ chmod 600 server-root-key.pem
 
 ipsec pki --self --ca --lifetime 3650 \
 --in server-root-key.pem \
---type rsa --dn "C=US, O=VPN Server, CN=Root CA Auto-created By Ali" \
+--type rsa --dn "C=US, O=VPN Server, CN=Root CA auto-created By Ali" \
 --outform pem > server-root-ca.pem
 
 # vpn-server
 ipsec pki --gen --type rsa --size 4096 --outform pem > vpn-server-key.pem
 
-server_ip=$(curl ifconfig.me)
+server_ip=$(curl ifconfig.me &>/dev/null)
 ipsec pki --pub --in vpn-server-key.pem \
 --type rsa | ipsec pki --issue --lifetime 1825 \
 --cacert server-root-ca.pem \
@@ -95,14 +94,45 @@ sudo iptables -A FORWARD --match policy --pol ipsec --dir out --proto esp -d 10.
 sudo iptables -t nat -A POSTROUTING -s 10.10.10.10/24 -o eth0 -m policy --pol ipsec --dir out -j ACCEPT
 sudo iptables -t nat -A POSTROUTING -s 10.10.10.10/24 -o eth0 -j MASQUERADE
 sudo iptables -t mangle -A FORWARD --match policy --pol ipsec --dir in -s 10.10.10.10/24 -o eth0 -p tcp -m tcp --tcp-flags SYN,RST SYN -m tcpmss --mss 1361:1536 -j TCPMSS --set-mss 1360
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent >/dev/null
 sudo service netfilter-persistent save
 
 # http
 sudo apt-get install -y python3 python3-pip >/dev/null
-sudo pip3 install Flask gunicorn
+sudo pip3 install Flask gunicorn >/dev/null
 
-wget https://raw.githubusercontent.com/minximenes/aliproject/main/aliclient/httpservice.py
+cat << EOF > httpservice.py
+from flask import Flask, Response, jsonify, send_file
+
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "200, connect success"
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    return jsonify({"error": str(error)}), 500
+
+@app.route("/init-log")
+def get_log():
+    try:
+        logfile = "/var/log/cloud-init-output.log"
+        with open(logfile, "r") as f:
+            content = f.read()
+            return Response(content, mimetype="text/plain")
+    except Exception as e:
+        return handle_error(e)
+
+@app.route("/ca-download")
+def download_ca():
+    try:
+        cafile = "/vpn-certs/server-root-ca.pem"
+        return send_file(f"{cafile}", as_attachment=True)
+    except Exception as e:
+        return handle_error(e)
+EOF
+
 pdir=$(cd `dirname "$0"` &>/dev/null && pwd)
 cat << EOF > http.tmp
 [Unit]

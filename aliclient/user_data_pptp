@@ -24,7 +24,7 @@ sudo echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
 sudo sysctl -p
 
 sudo iptables -t nat -A POSTROUTING -s 10.10.10.0/24 -o eth0 -j MASQUERADE
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent >/dev/null
 sudo service netfilter-persistent save
 
 echo "finish to install user_date_pptp"

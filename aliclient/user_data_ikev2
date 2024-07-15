@@ -102,7 +102,7 @@ sudo service netfilter-persistent save
 sudo apt-get install -y python3 python3-pip >/dev/null
 sudo pip3 install Flask gunicorn
 
-wget https://raw.githubusercontent.com/minximenes/ssscripts/main/httpservice.py
+wget https://raw.githubusercontent.com/minximenes/aliproject/main/aliclient/httpservice.py
 pdir=$(cd `dirname "$0"` &>/dev/null && pwd)
 cat << EOF > http.tmp
 [Unit]

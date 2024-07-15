@@ -18,13 +18,13 @@ chmod 600 server-root-key.pem
 
 ipsec pki --self --ca --lifetime 3650 \
 --in server-root-key.pem \
---type rsa --dn "C=US, O=VPN Server, CN=Root CA auto-created By Ali" \
+--type rsa --dn "C=US, O=VPN Server, CN=Root CA created By Ali" \
 --outform pem > server-root-ca.pem
 
 # vpn-server
 ipsec pki --gen --type rsa --size 4096 --outform pem > vpn-server-key.pem
 
-server_ip=$(curl ifconfig.me &>/dev/null)
+server_ip=$(curl ifconfig.me)
 ipsec pki --pub --in vpn-server-key.pem \
 --type rsa | ipsec pki --issue --lifetime 1825 \
 --cacert server-root-ca.pem \
@@ -99,7 +99,7 @@ sudo service netfilter-persistent save
 
 # http
 sudo apt-get install -y python3 python3-pip >/dev/null
-sudo pip3 install Flask gunicorn >/dev/null
+pip3 install Flask gunicorn >/dev/null
 
 cat << EOF > httpservice.py
 from flask import Flask, Response, jsonify, send_file
@@ -133,7 +133,7 @@ def download_ca():
         return handle_error(e)
 EOF
 
-pdir=$(cd `dirname "$0"` &>/dev/null && pwd)
+pdir=$(pwd)
 cat << EOF > http.tmp
 [Unit]
 Description=flask http

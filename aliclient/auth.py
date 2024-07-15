@@ -180,7 +180,6 @@ class SimpleClient:
         @return: script string or empty
         """
         user_data = ""
-        # data_path = os.path.join(os.path.dirname(__file__), "user_data")
         # data_path = os.path.join(os.path.dirname(__file__), "user_data_shadow")
         # data_path = os.path.join(os.path.dirname(__file__), "user_data_pptp")
         data_path = os.path.join(os.path.dirname(__file__), "user_data_ikev2")
@@ -638,6 +637,8 @@ class SimpleClient:
                 create_default_vswitch_request, runtime
             )
             v_switch_id = create_default_vswitch_response.body.v_switch_id
+            # wait for available
+            SimpleClient.waitforAvailable((region_id, "vswitch", v_switch_id))
         else:
             v_switch_id = v_switchs[0].v_switch_id
 
@@ -698,6 +699,23 @@ class SimpleClient:
                 response = client.describe_vpc_attribute_with_options(request, runtime)
                 vpc = response.body
 
+        elif resource_type == "vswitch":
+            config = SimpleClient.Config("vpc")
+            client = VpcClient(config)
+            runtime = util_models.RuntimeOptions()
+
+            request = vpc_models.DescribeVSwitchAttributesRequest(
+                region_id=region_id, v_switch_id=resource_id
+            )
+            response = client.describe_vswitch_attributes_with_options(request, runtime)
+            vswitch = response.body
+            while vswitch.status != "Available":
+                if time.perf_counter() - starttm > 30:
+                    return
+                time.sleep(3)
+                response = client.describe_vswitch_attributes_with_options(request, runtime)
+                vswitch = response.body
+
     @staticmethod
     @lru_cache(maxsize=None)
     def describeUbuntuImage(region_id: str) -> str:
@@ -719,7 +737,7 @@ class SimpleClient:
 
 if __name__ == "__main__":
     # pass
-    
+
     # regs = SimpleClient.describeRegionsWithCondition(sys.argv[1])
     # # sys.maxsize
     # xs = SimpleClient.comparePrice(SimpleClient.describeAvailableInstances(regs), 2, 5)
@@ -727,7 +745,4 @@ if __name__ == "__main__":
     #     print(x)
     # SimpleClient.createInstance(xs[0]["region_id"], xs[0]["zone_id"], xs[0]["instance_type"], xs[0]["disk_category"], 2)
 
-    # SimpleClient.describeUbuntuImage.cache_clear()
-    # SimpleClient.describeInstanceAttribute(sys.argv[1])
-
-    SimpleClient.deleteInstance('i-bp13g9asdcj538lodxq8')
+    SimpleClient.deleteInstance('i-bp1fpigzfg4cj1o8url8')

@@ -326,9 +326,14 @@ class SimpleClient:
         # additional setting
         run_instances_request = SimpleClient.specInstanceSetting(run_instances_request, setting)
 
-        run_instances_response = client.run_instances_with_options(
-            run_instances_request, runtime
-        )
+        try:
+            run_instances_response = client.run_instances_with_options(
+                run_instances_request, runtime
+            )
+        except Exception as error:
+            print(error.data.get("Message"))
+            return
+
         instance_ids = run_instances_response.body.instance_id_sets.instance_id_set
         print(f"Instance {instance_ids} have been created, will be released at {auto_release_time}")
         for instance_id in instance_ids:
@@ -550,6 +555,24 @@ class SimpleClient:
         client.stop_instance_with_options(request, runtime)
         print(f"ECS instance {instance_id} has been stopped")
 
+
+    @staticmethod
+    def reInitDisk(disk_id: str):
+        """
+        re-initial disk
+        @param: disk_id
+        """
+        config = SimpleClient.Config()
+        client = EcsClient(config)
+        runtime = util_models.RuntimeOptions()
+
+        request = ecs_models.ReInitDiskRequest(
+            disk_id=disk_id, password="gaomin112874+", auto_start_instance=True
+        )
+        client.re_init_disk_with_options(request, runtime)
+        print(f"Disk {disk_id} has been initialized")
+
+
     @staticmethod
     def rebootInstance(instance_id: str):
         """
@@ -611,4 +634,7 @@ class SimpleClient:
 
 
 if __name__ == "__main__":
-    pass
+    # pass
+    SimpleClient.rebootInstance("i-6we161fdbyr4gxhmww8r")
+    # SimpleClient.reInitDisk("d-2vccqyhkp48z9ovflo2n")
+    # SimpleClient.describeInstanceAttribute("i-6weakdko5e5t0eet22ik")

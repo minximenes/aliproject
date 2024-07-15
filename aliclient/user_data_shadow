@@ -26,4 +26,56 @@ sudo mv -f ./$PORT.tmp /etc/shadowsocks-libev/config.json
 sudo systemctl enable shadowsocks-libev
 sudo systemctl restart shadowsocks-libev
 
+# http
+sudo apt-get install -y python3 python3-pip >/dev/null
+pip3 install Flask gunicorn >/dev/null
+
+cat << EOF > httpservice.py
+from flask import Flask, Response, jsonify, send_file
+
+app = Flask(__name__)
+
+@app.route("/")
+def index():
+    return "200, connect success"
+
+@app.errorhandler(Exception)
+def handle_error(error):
+    return jsonify({"error": str(error)}), 500
+
+@app.route("/init-log")
+def get_log():
+    try:
+        logfile = "/var/log/cloud-init-output.log"
+        with open(logfile, "r") as f:
+            content = f.read()
+            return Response(content, mimetype="text/plain")
+    except Exception as e:
+        return handle_error(e)
+EOF
+
+pdir=$(pwd)
+cat << EOF > http.tmp
+[Unit]
+Description=flask http
+After=network.target
+
+[Service]
+User=$(whoami)
+Group=$(groups)
+WorkingDirectory=$pdir
+Environment="PYTHONPATH=$pdir"
+ExecStart=gunicorn -b 0.0.0.0:5000 --workers 4 httpservice:app
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo mv http.tmp /etc/systemd/system/flaskhttp.service
+sudo systemctl daemon-reload
+sudo systemctl enable flaskhttp.service
+sudo systemctl restart flaskhttp.service
+
 echo "finish to install user_date_shadow"

@@ -4,6 +4,7 @@ import os
 import sys
 import time
 
+from concurrent import futures
 from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import Dict, List, Tuple
@@ -180,9 +181,9 @@ class SimpleClient:
         @return: script string or empty
         """
         user_data = ""
-        # data_path = os.path.join(os.path.dirname(__file__), "user_data_shadow")
+        data_path = os.path.join(os.path.dirname(__file__), "user_data_shadow")
         # data_path = os.path.join(os.path.dirname(__file__), "user_data_pptp")
-        data_path = os.path.join(os.path.dirname(__file__), "user_data_ikev2")
+        # data_path = os.path.join(os.path.dirname(__file__), "user_data_ikev2")
         if os.path.exists(data_path):
             with open(data_path, "r") as f:
                 user_data = f.read()
@@ -406,6 +407,7 @@ class SimpleClient:
         request = ecs_models.DescribeRegionsRequest(
             resource_type="instance",
             instance_charge_type="SpotAsPriceGo"
+            # instance_charge_type="PrePaid"
         )
         response = client.describe_regions_with_options(request, runtime)
         regions = response.body.regions.region
@@ -437,24 +439,64 @@ class SimpleClient:
         @return: instance_types
         """
         instance_types = []
-        for region_id in region_ids:
-            config = SimpleClient.Config(f"ecs.{region_id}")
-            client = EcsClient(config)
-            runtime = util_models.RuntimeOptions()
+        # for region_id in region_ids:
+        #     config = SimpleClient.Config(f"ecs.{region_id}")
+        #     client = EcsClient(config)
+        #     runtime = util_models.RuntimeOptions()
 
-            for vCPU, memGiB in ((x, y) for x in vCPUs for y in memGiBs):
-                request = ecs_models.DescribeAvailableResourceRequest(
-                    region_id=region_id,
-                    destination_resource="InstanceType",
-                    instance_charge_type="PostPaid",
-                    spot_strategy="SpotAsPriceGo",
-                    cores=vCPU,
-                    memory=memGiB,
-                    io_optimized="optimized",
-                    network_category='vpc'
-                )
-                response = client.describe_available_resource_with_options(request, runtime)
+        #     for vCPU, memGiB in ((x, y) for x in vCPUs for y in memGiBs):
+        #         request = ecs_models.DescribeAvailableResourceRequest(
+        #             region_id=region_id,
+        #             destination_resource="InstanceType",
+        #             # instance_charge_type="PostPaid",
+        #             # spot_strategy="SpotAsPriceGo",
+        #             instance_charge_type="PrePaid",
+        #             cores=vCPU,
+        #             memory=memGiB,
+        #             io_optimized="optimized",
+        #             network_category='vpc'
+        #         )
+        #         response = client.describe_available_resource_with_options(request, runtime)
 
+        #         available_zones = response.body.available_zones.available_zone
+        #         for zone in list(filter(lambda z: z.status_category == "WithStock", available_zones)):
+        #             for resource in zone.available_resources.available_resource:
+        #                 supported_resources = resource.supported_resources.supported_resource
+        #                 for supported_res in list(filter(lambda s: s.status_category == "WithStock", supported_resources)):
+        #                     instance_types.append({
+        #                         "region_id": region_id,
+        #                         "zone_id": zone.zone_id,
+        #                         "instance_type": supported_res.value,
+        #                         "cores": vCPU,
+        #                         "memory": memGiB,
+        #                     })
+        future_rlts = {}
+        print(datetime.utcnow())
+        thread_num = len(region_ids) * len(vCPUs) * len(memGiBs)
+        with futures.ThreadPoolExecutor(max_workers=thread_num) as executor:
+            for region_id in region_ids:
+                for vCPU, memGiB in ((x, y) for x in vCPUs for y in memGiBs):
+                    config = SimpleClient.Config(f"ecs.{region_id}")
+                    client = EcsClient(config)
+                    runtime = util_models.RuntimeOptions()
+
+                    request = ecs_models.DescribeAvailableResourceRequest(
+                        region_id=region_id,
+                        destination_resource="InstanceType",
+                        instance_charge_type="PostPaid",
+                        spot_strategy="SpotAsPriceGo",
+                        # instance_charge_type="PrePaid",
+                        cores=vCPU,
+                        memory=memGiB,
+                        io_optimized="optimized",
+                        network_category='vpc'
+                    )
+                    future_rlt = executor.submit(client.describe_available_resource_with_options, request, runtime)
+                    future_rlts[future_rlt] = (region_id, vCPU, memGiB)
+
+            for future_rlt in futures.as_completed(future_rlts):
+                region_id, vCPU, memGiB = future_rlts[future_rlt]
+                response = future_rlt.result()
                 available_zones = response.body.available_zones.available_zone
                 for zone in list(filter(lambda z: z.status_category == "WithStock", available_zones)):
                     for resource in zone.available_resources.available_resource:
@@ -486,6 +528,9 @@ class SimpleClient:
         runtime = util_models.RuntimeOptions()
 
         category_prices = []
+        # future_rlts = {}
+        # with futures.ThreadPoolExecutor(max_workers=2) as executor:
+
         for disk_category in [
             "cloud_efficiency",
             "cloud_essd_entry",
@@ -505,6 +550,7 @@ class SimpleClient:
                     size=20, category=disk_category
                 ),
                 # spot
+                # price_unit='Year',
                 spot_strategy="SpotAsPriceGo",
                 spot_duration=0,
                 zone_id=zone_id,
@@ -516,6 +562,19 @@ class SimpleClient:
                 )
             except Exception as error:
                 continue
+
+            #     future_rlt = executor.submit(client.describe_price_with_options, request, runtime)
+            #     future_rlts[future_rlt] = disk_category
+
+            # for future_rlt in futures.as_completed(future_rlts):
+            #     disk_category = future_rlts[future_rlt]
+            #     try:
+            #         response = future_rlt.result()
+            #     except Exception as error:
+            #         continue
+            #     category_prices.append(
+            #         (disk_category, response.body.price_info.price.trade_price)
+            #     )
 
         if len(category_prices) == 0:
             return ("", -1)
@@ -530,14 +589,28 @@ class SimpleClient:
         @return: instances of given amount at lowest price
         """
         instance_prices = []
-        for instance_tp in instance_types:
-            disk_category, price = SimpleClient.describePrice(
-                **instance_tp, bandwidth=bandwidth
-            )
-            instance_prices.append(
-                {**instance_tp, "disk_category": disk_category, "price": price}
-            )
+        future_rlts = {}
+        print(datetime.utcnow())
+        thread_num = len(instance_types)
+        with futures.ThreadPoolExecutor(max_workers=thread_num) as executor:
+            for instance_tp in instance_types:
+                future_rlt = executor.submit(SimpleClient.describePrice, **instance_tp, bandwidth=bandwidth)
+                future_rlts[future_rlt] = instance_tp
 
+            for future_rlt in futures.as_completed(future_rlts):
+                instance_tp = future_rlts[future_rlt]
+                disk_category, price = future_rlt.result()
+                instance_prices.append(
+                    {**instance_tp, "disk_category": disk_category, "price": price}
+                )
+
+        # for instance_tp in instance_types:
+        #     disk_category, price = SimpleClient.describePrice(
+        #         **instance_tp, bandwidth=bandwidth
+        #     )
+        #     instance_prices.append(
+        #         {**instance_tp, "disk_category": disk_category, "price": price}
+        #     )
         return sorted(
             list(filter(lambda p: p["price"] > 0, instance_prices)),
             key=lambda p: p["price"],
@@ -737,12 +810,13 @@ class SimpleClient:
 
 if __name__ == "__main__":
     # pass
+    begin = datetime.utcnow()
+    regs = SimpleClient.describeRegionsWithCondition(sys.argv[1])
+    # sys.maxsize
+    xs = SimpleClient.comparePrice(SimpleClient.describeAvailableInstances(regs), 3, 200)
+    for x in xs:
+        print(x)
+    print(datetime.utcnow() - begin)
+    # SimpleClient.createInstance(xs[0]["region_id"], xs[0]["zone_id"], xs[0]["instance_type"], xs[0]["disk_category"], 1, 35)
 
-    # regs = SimpleClient.describeRegionsWithCondition(sys.argv[1])
-    # # sys.maxsize
-    # xs = SimpleClient.comparePrice(SimpleClient.describeAvailableInstances(regs), 2, 5)
-    # for x in xs:
-    #     print(x)
-    # SimpleClient.createInstance(xs[0]["region_id"], xs[0]["zone_id"], xs[0]["instance_type"], xs[0]["disk_category"], 2)
-
-    SimpleClient.deleteInstance('i-bp1fpigzfg4cj1o8url8')
+    # SimpleClient.deleteInstance('i-6we8wngi451f9wxko7fk')

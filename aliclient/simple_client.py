@@ -635,6 +635,7 @@ class SimpleClient:
 
 if __name__ == "__main__":
     # pass
-    SimpleClient.rebootInstance("i-6we161fdbyr4gxhmww8r")
-    # SimpleClient.reInitDisk("d-2vccqyhkp48z9ovflo2n")
+    # SimpleClient.rebootInstance("i-bp1df6qfeafa1n7cmlte")
+    # SimpleClient.stopInstance("i-2vccqyhkp48z9ovglkfo")
+    SimpleClient.reInitDisk("d-2vccqyhkp48z9ovflo2n")
     # SimpleClient.describeInstanceAttribute("i-6weakdko5e5t0eet22ik")

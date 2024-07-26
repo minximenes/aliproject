@@ -24,7 +24,7 @@ ipsec pki --self --ca --lifetime 3650 \
 # vpn-server
 ipsec pki --gen --type rsa --size 4096 --outform pem > vpn-server-key.pem
 
-server_ip=$(curl ifconfig.me)
+server_ip=$(curl -s ifconfig.me)
 ipsec pki --pub --in vpn-server-key.pem \
 --type rsa | ipsec pki --issue --lifetime 1825 \
 --cacert server-root-ca.pem \

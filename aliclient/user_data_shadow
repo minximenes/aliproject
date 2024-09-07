@@ -1,81 +1,47 @@
 #!/bin/bash
-
-echo "start to install user_date_shadow"
-
-# parameter
-PORT=$([ -n "$1" ] && echo $1 || echo 8388)
-PWD=$([ -n "$2" ] && echo "$2" || echo "12qwaszx")
-AEAD=$([ -n "$3" ] && echo "$3" || echo "chacha20-ietf-poly1305")
+# 启动约需1分钟
+echo && echo "install user_data_shadow"
+# 将12qwaszx改成自己的密码
+PWD=12qwaszx
 
 sudo apt-get update >/dev/null 2>&1
-sudo apt-get install -y shadowsocks-libev >/dev/null
-# configuration
-cat << EOF > $PORT.tmp
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y shadowsocks-libev >/dev/null
+
+# port: tcp/udp/8388
+# passcode: $PWD
+# AEAD: aes-256-cfb
+cat << EOF > 8388.tmp
+{
+    "server":["::0", "0.0.0.0"],
+    "mode":"tcp_and_udp",
+    "server_port":8388,
+    "password":"$PWD",
+    "timeout":300,
+    "method":"aes-256-cfb",
+    "fast_open":false
+}
+EOF
+sudo mv 8388.tmp /etc/shadowsocks-libev/config.json
+sudo systemctl enable shadowsocks-libev
+sudo systemctl restart shadowsocks-libev
+
+# port: tcp/udp/8389
+# passcode: $PWD
+# AEAD: chacha20-ietf-poly1305
+PORT=8389
+cat << EOF > 8389.tmp
 {
     "server":["::0", "0.0.0.0"],
     "mode":"tcp_and_udp",
     "server_port":$PORT,
     "password":"$PWD",
     "timeout":300,
-    "method":"$AEAD",
+    "method":"chacha20-ietf-poly1305",
     "fast_open":false
 }
 EOF
-sudo mv -f ./$PORT.tmp /etc/shadowsocks-libev/config.json
-# restart service
-sudo systemctl enable shadowsocks-libev
-sudo systemctl restart shadowsocks-libev
+sudo mv 8389.tmp /etc/shadowsocks-libev/$PORT.json
+sudo systemctl enable shadowsocks-libev-server@$PORT.service
+sudo systemctl restart shadowsocks-libev-server@$PORT.service
 
-# http
-sudo apt-get install -y python3 python3-pip >/dev/null
-pip3 install Flask gunicorn >/dev/null
-
-cat << EOF > httpservice.py
-from flask import Flask, Response, jsonify, send_file
-
-app = Flask(__name__)
-
-@app.route("/")
-def index():
-    return "200, connect success"
-
-@app.errorhandler(Exception)
-def handle_error(error):
-    return jsonify({"error": str(error)}), 500
-
-@app.route("/init-log")
-def get_log():
-    try:
-        logfile = "/var/log/cloud-init-output.log"
-        with open(logfile, "r") as f:
-            content = f.read()
-            return Response(content, mimetype="text/plain")
-    except Exception as e:
-        return handle_error(e)
-EOF
-
-pdir=$(pwd)
-cat << EOF > http.tmp
-[Unit]
-Description=flask http
-After=network.target
-
-[Service]
-User=$(whoami)
-Group=$(groups)
-WorkingDirectory=$pdir
-Environment="PYTHONPATH=$pdir"
-ExecStart=gunicorn -b 0.0.0.0:5000 --workers 4 httpservice:app
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sudo mv http.tmp /etc/systemd/system/flaskhttp.service
-sudo systemctl daemon-reload
-sudo systemctl enable flaskhttp.service
-sudo systemctl restart flaskhttp.service
-
-echo "finish to install user_date_shadow"
+echo "end" && echo

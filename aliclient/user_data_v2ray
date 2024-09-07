@@ -1,0 +1,34 @@
+#!/bin/bash
+# 启动约需1分钟
+echo && echo "install user_data_v2ray"
+# 生成并换成自己的UUID
+# UUID=$(uuidgen)
+UUID=cbd0f2ed-9935-416e-993d-3da15f562115
+
+sudo apt-get update >/dev/null 2>&1
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y curl unzip >/dev/null
+
+# port: tcp/10086
+curl -s -O https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
+sudo bash install-release.sh >/dev/null
+cat << EOF > v2ray.tmp
+{
+    "inbounds": [{
+        "port": 10086,
+        "protocol": "vmess",
+        "settings": {
+            "clients": [{
+                "id": "$UUID"
+            }]
+        }
+    }],
+    "outbounds": [{
+        "protocol": "freedom"
+    }]
+}
+EOF
+sudo mv v2ray.tmp /usr/local/etc/v2ray/config.json
+sudo systemctl enable v2ray
+sudo systemctl restart v2ray
+
+echo "end" && echo

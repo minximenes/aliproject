@@ -1,8 +1,8 @@
 #!/bin/bash
 # 启动约需1分钟
 echo && echo "install user_data_shadow"
-# 将12qwaszx改成自己的密码
-PWD=12qwaszx
+# 将12345678改成自己的密码
+PWD=12345678
 
 sudo apt-get update >/dev/null 2>&1
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y shadowsocks-libev >/dev/null
@@ -43,5 +43,3 @@ EOF
 sudo mv 8389.tmp /etc/shadowsocks-libev/$PORT.json
 sudo systemctl enable shadowsocks-libev-server@$PORT.service
 sudo systemctl restart shadowsocks-libev-server@$PORT.service
-
-echo "end" && echo

@@ -1,12 +1,12 @@
 #!/bin/bash
 # 启动约需1分钟
 echo && echo "install user_data_pptp"
-# 将alttest改成自己的用户名，将12qwaszx改成自己的密码
+# 将alttest改成自己的用户名，将12345678改成自己的密码
 PPTP_USER=alttest
-PPTP_PWD=12qwaszx
+PPTP_PWD=12345678
 
 sudo apt-get update >/dev/null 2>&1
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y pptpd >/dev/null
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y pptpd iptables-persistent >/dev/null
 
 # port: tcp/1723
 # ppp
@@ -24,7 +24,4 @@ sudo echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
 sudo sysctl -qp
 
 sudo iptables -t nat -A POSTROUTING -s 10.10.10.0/24 -o eth0 -j MASQUERADE
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -y iptables-persistent >/dev/null
 sudo service netfilter-persistent save
-
-echo "end" && echo

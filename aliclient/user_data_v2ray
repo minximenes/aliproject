@@ -30,5 +30,3 @@ EOF
 sudo mv v2ray.tmp /usr/local/etc/v2ray/config.json
 sudo systemctl enable v2ray
 sudo systemctl restart v2ray
-
-echo "end" && echo
